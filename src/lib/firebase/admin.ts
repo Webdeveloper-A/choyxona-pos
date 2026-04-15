@@ -1,26 +1,36 @@
 import admin from "firebase-admin";
 
+function getRequiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`${name} environment variable topilmadi`);
+  }
+
+  return value;
+}
+
 function getPrivateKey() {
-  const key = process.env.FIREBASE_PRIVATE_KEY;
-  return key ? key.replace(/\n/g, "\n") : undefined;
+  const rawKey = getRequiredEnv("FIREBASE_PRIVATE_KEY");
+
+  const unwrapped =
+    rawKey.startsWith('"') && rawKey.endsWith('"')
+      ? rawKey.slice(1, -1)
+      : rawKey;
+
+  return unwrapped.replace(/\\n/g, "\n");
 }
 
 function getServiceAccountConfig() {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = getRequiredEnv("FIREBASE_PROJECT_ID");
+  const clientEmail = getRequiredEnv("FIREBASE_CLIENT_EMAIL");
   const privateKey = getPrivateKey();
-
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "Firebase Admin env qiymatlari to‘liq emas. FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL va FIREBASE_PRIVATE_KEY ni tekshiring."
-    );
-  }
 
   return { projectId, clientEmail, privateKey };
 }
 
 export function getAdminApp() {
-  if (admin.apps.length) {
+  if (admin.apps.length > 0) {
     return admin.app();
   }
 
