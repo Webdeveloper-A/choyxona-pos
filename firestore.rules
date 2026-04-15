@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        : null;
+    }
+
+    function hasRole(role) {
+      return signedIn() && userDoc() != null && userDoc().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole("admin");
+    }
+
+    function isStaff() {
+      return signedIn() && userDoc() != null && userDoc().role in ["admin", "ofitsiant", "oshxona", "kassa"];
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId || isAdmin();
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && request.auth.uid == userId || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /menu/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /tables/{docId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /rooms/{docId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}
